@@ -88,11 +88,11 @@ td,th{padding:5px 4px;border-bottom:1px solid var(--line);text-align:left;vertic
  <div id="detail"></div>
 </div></div>
 <script>
-// Live seat checks: on the local app (trek_map.py) they go to the same server;
-// on GitHub Pages they go to the Cloudflare Worker in worker/worker.js.
-const WORKER_URL='https://aranyavihaaratrekking-karnataka.atharvamodi.workers.dev';
+// Live data comes from the same server when the page is served by trek_map.py
+// or by Vercel; on GitHub Pages it comes from the Vercel functions in api/.
+const BACKEND_URL='https://YOUR-PROJECT.vercel.app';
 const LOCAL=['127.0.0.1','localhost'].includes(location.hostname);
-const API=LOCAL?'':WORKER_URL;
+const API=location.hostname.endsWith('github.io')?BACKEND_URL:'';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const pad=n=>String(n).padStart(2,'0');
@@ -219,7 +219,7 @@ function showDetail(id,fly){
   $('#detail .x').onclick=()=>{$('#detail').style.display='none';openId=null;render();};
 }
 
-async function api(path){if(!LOCAL&&WORKER_URL.includes('YOUR-WORKER'))throw new Error('live checks are not set up yet (WORKER_URL in index.html)');const r=await fetch(API+path);const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j;}
+async function api(path){if(API.includes('YOUR-PROJECT'))throw new Error('live checks are not set up yet (BACKEND_URL in index.html)');const r=await fetch(API+path);const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j;}
 
 async function pool(tasks,n,tick){let i=0;const w=async()=>{while(i<tasks.length){const t=tasks[i++];try{await t()}catch(e){console.warn(e)}tick()}};await Promise.all(Array.from({length:n},w));}
 
@@ -255,7 +255,7 @@ $('#tickets').oninput=render;$('#mode').onchange=render;
 async function init(){
   buildDates();
   $('#status').textContent='Loading trek list…';
-  try{const r=await fetch('treks.json',{cache:'no-cache'});if(!r.ok)throw new Error(r.status);TREKS=await r.json();}catch(e){$('#status').textContent='Could not load treks: '+e.message;return;}
+  try{TREKS=LOCAL?await api('/treks.json'):await api('/api/treks').catch(async e=>{console.warn('live trek list failed, using saved copy',e);const r=await fetch('treks.json',{cache:'no-cache'});if(!r.ok)throw e;return r.json();});}catch(e){$('#status').textContent='Could not load treks: '+e.message;return;}
   const seen={},pts=[];
   for(const t of TREKS){
     if(t.lat==null)continue;

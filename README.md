@@ -44,20 +44,18 @@ Open **https://modi-fied.github.io/AranyaVihaaraTrekking_Karnataka/** in any bro
 
 ## Setting up the website (maintainer notes)
 
-The website has three parts:
+The booking site only accepts connections from Indian IP addresses, so the live parts run on Vercel's Mumbai region.
 
 | Part | Where it lives | What it does |
 |---|---|---|
-| Map page | `docs/index.html`, served by GitHub Pages | The page people use. The local app serves the same file. |
-| Trek list | `docs/treks.json` | List of open treks with map coordinates. A GitHub Action (`.github/workflows/refresh-treks.yml`) refreshes it every day. |
-| Live seat checks | `worker/worker.js` + `wrangler.toml`, on Cloudflare Workers (free) | Talks to the booking site for the page. A page on GitHub Pages can't call the booking site directly. |
+| Map page | `docs/index.html`, served by GitHub Pages | The page people use. The local app and Vercel serve the same file. |
+| Live data | `api/` + `lib/aranya.js`, on Vercel (free, Mumbai region set in `vercel.json`) | Trek list, closed dates and seat counts. A page on GitHub Pages can't call the booking site directly. |
+| Saved trek list | `docs/treks.json` | Backup used if the live trek list can't be loaded. Refresh it with `python trek_map.py --export docs/treks.json`. |
 
 **One-time setup:**
 
-1. **Cloudflare Worker:** in the Cloudflare dashboard, create a Worker connected to this GitHub repo. Cloudflare reads `wrangler.toml` and redeploys `worker/worker.js` on every push. The Worker name in `wrangler.toml` must match the name in Cloudflare.
-2. **Point the page at the Worker:** in `docs/index.html`, set `WORKER_URL` to the Worker's `*.workers.dev` address. Commit and push.
+1. **Vercel:** sign in at https://vercel.com with GitHub, then **Add New → Project**, import this repo, and click **Deploy** (no settings to change). Vercel redeploys on every push. The project's own `*.vercel.app` address also shows the full working map.
+2. **Point the page at Vercel:** in `docs/index.html`, set `BACKEND_URL` to the project's `*.vercel.app` address. Commit and push.
 3. **GitHub Pages:** on GitHub, open **Settings → Pages**. Under *Build and deployment*, choose **Deploy from a branch**, branch **main**, folder **/docs**, then **Save**. After a minute or two the site appears at the address above.
-4. **Trek list refresh:** on GitHub, open **Actions → Refresh trek list → Run workflow** once to check that it works. If it fails because the booking site blocks GitHub's servers, refresh the list from your own computer instead:
-   `python trek_map.py --export docs/treks.json`, then commit and push.
 
-If you move the site to another address, add that address to `ALLOWED_ORIGINS` in `worker/worker.js` and deploy the Worker again.
+If you move the page to another address, add that address to `ALLOWED_ORIGINS` in `lib/aranya.js`.

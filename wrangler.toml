@@ -1,5 +1,0 @@
-# Cloudflare Worker for live seat checks (see worker/worker.js).
-# Cloudflare deploys this automatically when the GitHub repo changes.
-name = "aranyavihaaratrekking-karnataka"
-main = "worker/worker.js"
-compatibility_date = "2026-09-01"
