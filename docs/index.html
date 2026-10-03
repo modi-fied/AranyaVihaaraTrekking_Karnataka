@@ -2,6 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Trek Availability Map</title>
+<meta name="author" content="Atharva Modi">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
@@ -12,6 +13,8 @@
 aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
 .head{padding:16px 18px 10px;border-bottom:1px solid var(--line)}
 h1{font-size:18px;margin:0}.sub{color:var(--muted);font-size:12px}
+.owner{font-size:12px;margin-top:4px}.owner a{color:var(--accent);font-weight:600;text-decoration:none}
+.notice{margin-top:10px;padding:8px 10px;border-radius:8px;background:#fff7e0;border:1px solid #f0dca0;color:#5c4500;font-size:12.5px}
 .controls{padding:12px 18px;border-bottom:1px solid var(--line)}
 .lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px;display:flex;justify-content:space-between}
 .lbl a{text-transform:none;font-weight:500;color:var(--accent);cursor:pointer}
@@ -63,7 +66,9 @@ td,th{padding:5px 4px;border-bottom:1px solid var(--line);text-align:left;vertic
 </style></head>
 <body><div id="app">
 <aside>
- <div class="head"><h1>Trek availability</h1><div class="sub">Unofficial helper · live seat counts from the <a href="https://aranyavihaara.karnataka.gov.in/" target="_blank">Aranya Vihaara</a> booking site · not affiliated with the Forest Department</div></div>
+ <div class="head"><h1>Trek availability</h1><div class="sub">Unofficial helper · live seat counts from the <a href="https://aranyavihaara.karnataka.gov.in/" target="_blank">Aranya Vihaara</a> booking site · not affiliated with the Forest Department</div>
+  <div class="owner">Made by <a href="https://github.com/modi-fied" target="_blank">Atharva Modi</a></div>
+  <div class="notice"><b>This is not a booking website.</b> Select the dates to check availability, then book on the official <a href="https://aranyavihaara.karnataka.gov.in/" target="_blank">Aranya Vihaara</a> site.</div></div>
  <div class="controls">
   <div class="lbl">Dates <a id="clear">clear</a></div>
   <div class="calnav"><button id="prev" title="Previous month">&#8249;</button><select id="month"></select><select id="year"></select><button id="next" title="Next month">&#8250;</button></div>
