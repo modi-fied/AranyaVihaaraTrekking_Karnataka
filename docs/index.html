@@ -187,8 +187,8 @@ function updatePickUI(){
   const n=targets().length,q=$('#q').value.trim();
   $('#pickhint').innerHTML=picked.size
     ?`Checking only the ${n} ticked trek${n===1?'':'s'}: ${TREKS.filter(t=>picked.has(t.id)).map(t=>esc(t.name)).join(', ')}.`
-    :q?`Checking the ${n} trek${n===1?'':'s'} matching “${esc(q)}”. Tick treks below to check only those.`
-     :`Checking all ${n} treks. Search, or tick treks below to check only those.`;
+    :q?`<b>No treks selected</b>, so all ${n} trek${n===1?'':'s'} matching “${esc(q)}” will be checked. Tick treks below to check only those.`
+     :`<b>No treks selected</b>, so all ${n} treks will be checked. Search, or tick treks below to check only those.`;
   $('#go').textContent=`Check availability · ${n} trek${n===1?'':'s'}`;
   $('#allTreks').style.visibility=picked.size||q?'visible':'hidden';
 }
