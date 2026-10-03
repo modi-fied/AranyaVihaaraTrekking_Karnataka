@@ -15,6 +15,8 @@ Only treks whose tickets are sold online by the Karnataka Forest Department are 
 
 Open **https://modi-fied.github.io/AranyaVihaaraTrekking_Karnataka/** in any browser, on a phone or a computer. Nothing to install.
 
+The same map is also at https://aranyavihaaratrekkingkarnataka.vercel.app/.
+
 ## Or run it on your own Windows computer
 
 ### Step 1: Install Python (one time only)
