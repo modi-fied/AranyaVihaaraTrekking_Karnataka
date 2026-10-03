@@ -7,6 +7,7 @@ Only treks whose tickets are sold online by the Karnataka Forest Department are 
 
 - Shows every open trek from the [Aranya Vihaara](https://aranyavihaara.karnataka.gov.in) website on a map.
 - Pick your dates and number of people, and each trek is coloured by whether tickets are available.
+- Search treks by name or district, or tick specific treks to check only those.
 - It only looks at availability. It does not book anything or ask for your personal details.
 - This is an unofficial tool and is not affiliated with the Karnataka Forest Department.
 

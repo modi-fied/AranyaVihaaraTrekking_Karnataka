@@ -10,7 +10,7 @@
  --ok:#1e9e57;--part:#e0a100;--none:#d6453d;--idle:#9aa39e}
 *{box-sizing:border-box}html,body{margin:0;height:100%;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
 #app{display:grid;grid-template-columns:380px 1fr;height:100vh}
-aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;overflow:auto}
 .head{padding:16px 18px 10px;border-bottom:1px solid var(--line)}
 h1{font-size:18px;margin:0}.sub{color:var(--muted);font-size:12px}
 .owner{font-size:12px;margin-top:4px}.owner a{color:var(--accent);font-weight:600;text-decoration:none}
@@ -36,7 +36,7 @@ button.go{margin-top:12px;width:100%;padding:10px;border:0;border-radius:10px;ba
 button.go:disabled{opacity:.6;cursor:wait}
 #status{font-size:12px;color:var(--muted);margin-top:8px;min-height:18px}
 .bar{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:4px;display:none}.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
-#list{overflow:auto;flex:1;padding:6px 10px 14px}
+#list{flex:none;padding:6px 10px 14px}
 .item{display:flex;gap:10px;padding:9px 8px;border-radius:10px;cursor:pointer;align-items:flex-start}
 .item:hover,.item.sel{background:#f1f4ef}
 .dot{width:12px;height:12px;border-radius:50%;margin-top:4px;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
@@ -62,7 +62,9 @@ button.go:disabled{opacity:.6;cursor:wait}
 table{width:calc(100% - 32px);margin:4px 16px 14px;border-collapse:collapse;font-size:13px}
 td,th{padding:5px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{font-size:11px;color:var(--muted);text-transform:uppercase}
 .note{font-size:12px;color:var(--muted);padding:0 16px 14px}
-@media (max-width:800px){#app{grid-template-columns:1fr;grid-template-rows:auto 55vh}aside{max-height:none}#list{max-height:40vh}#detail{left:8px;right:8px;width:auto}}
+#q{width:100%}
+.item .pick{margin:3px 0 0;flex:none;width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+@media (max-width:800px){#app{display:flex;flex-direction:column;height:auto}aside{overflow:visible;border-right:0;border-bottom:1px solid var(--line)}#mapwrap{height:75vh;flex:none}#detail{left:8px;right:8px;width:auto}}
 </style></head>
 <body><div id="app">
 <aside>
@@ -78,6 +80,9 @@ td,th{padding:5px 4px;border-bottom:1px solid var(--line);text-align:left;vertic
    <label>Tickets needed<input id="tickets" type="number" min="1" max="50" value="2"></label>
    <label>Show treks open on<select id="mode"><option value="all">all selected dates</option><option value="any">any selected date</option></select></label>
   </div>
+  <div class="lbl" style="margin-top:14px">Treks <a id="allTreks">show all</a></div>
+  <input id="q" type="search" placeholder="Search by trek or district name" autocomplete="off">
+  <div class="calhint" id="pickhint"></div>
   <button class="go" id="go">Check availability</button>
   <div id="status">Pick one or more dates, then check.</div><div class="bar" id="bar"><i></i></div>
  </div>
@@ -106,7 +111,7 @@ const sortKey=k=>k.split('-').reverse().join('');
 const pretty=k=>{const [d,m,y]=k.split('-');return new Date(+y,m-1,+d).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})};
 const COLORS={ok:'#1e9e57',part:'#e0a100',none:'#d6453d',idle:'#9aa39e'};
 const FRESH_MS=5*60*1000;
-let TREKS=[],markers={},blocked={},avail={},selected=new Set(),openId=null,busy=false;
+let TREKS=[],markers={},blocked={},avail={},selected=new Set(),picked=new Set(),openId=null,busy=false;
 
 const map=L.map('map',{zoomControl:true}).setView([14.6,76.3],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
@@ -172,11 +177,31 @@ function trekStatus(t){
 }
 const dayLabel=d=>({ok:`${d.best} left`,few:`only ${d.best}`,full:'sold out',closed:'closed',pending:'…',error:'error'})[d.s];
 
+// Trek search and picking: ticked treks are the only ones checked;
+// with none ticked, every trek matching the search is checked.
+const norm=s=>String(s??'').toLowerCase().replace(/\s+/g,'');
+function matches(t){const q=norm($('#q').value);
+  return !q||[t.name,t.name_kn,t.district,t.district_kn,t.start_point].some(f=>norm(f).includes(q));}
+const targets=()=>picked.size?TREKS.filter(t=>picked.has(t.id)):TREKS.filter(matches);
+function updatePickUI(){
+  const n=targets().length,q=$('#q').value.trim();
+  $('#pickhint').innerHTML=picked.size
+    ?`Checking only the ${n} ticked trek${n===1?'':'s'}: ${TREKS.filter(t=>picked.has(t.id)).map(t=>esc(t.name)).join(', ')}.`
+    :q?`Checking the ${n} trek${n===1?'':'s'} matching “${esc(q)}”. Tick treks below to check only those.`
+     :`Checking all ${n} treks. Search, or tick treks below to check only those.`;
+  $('#go').textContent=`Check availability · ${n} trek${n===1?'':'s'}`;
+  $('#allTreks').style.visibility=picked.size||q?'visible':'hidden';
+}
+
 function render(){
+  updatePickUI();
   const groups={ok:[],part:[],none:[],idle:[]};
   for(const t of TREKS){
+    const shown=matches(t)||picked.has(t.id),m=markers[t.id];
+    if(m)shown?m.addTo(map):m.remove();
+    if(!shown)continue;
     const st=trekStatus(t);groups[st.c].push([t,st]);
-    const m=markers[t.id];if(m){m.setStyle({fillColor:COLORS[st.c],radius:st.c==='ok'?11:8,fillOpacity:st.c==='idle'?.6:.95});if(st.c==='ok')m.bringToFront();}
+    if(m){m.setStyle({fillColor:COLORS[st.c],radius:st.c==='ok'?11:8,fillOpacity:st.c==='idle'?.6:.95});if(st.c==='ok')m.bringToFront();}
   }
   const titles={ok:'Available',part:'Partly available',none:'Not available',idle:selected.size?'Not checked yet':'Open treks'};
   let h='';
@@ -185,11 +210,13 @@ function render(){
     h+=`<div class="group">${titles[g]} · ${groups[g].length}</div>`;
     for(const [t,st] of groups[g].sort((a,b)=>a[0].name.localeCompare(b[0].name))){
       const days=st.days.filter(d=>d.s!=='pending').map(d=>`<em class="${d.s}" title="${esc(pretty(d.k))}">${esc(pretty(d.k).split(',')[0]+' '+d.k.slice(0,2))}: ${esc(dayLabel(d))}</em>`).join('');
-      h+=`<div class="item${openId===t.id?' sel':''}" data-id="${t.id}"><span class="dot" style="background:${COLORS[st.c]}"></span><div><div class="n">${esc(t.name)}</div><div class="m">${esc(t.district)}${t.level?' · '+esc(t.level):''}${t.distance_km?' · '+esc(t.distance_km)+' km':''}</div>${days?`<div class="days">${days}</div>`:''}</div></div>`;
+      h+=`<div class="item${openId===t.id?' sel':''}" data-id="${t.id}"><input type="checkbox" class="pick" title="Check only ticked treks"${picked.has(t.id)?' checked':''}><span class="dot" style="background:${COLORS[st.c]}"></span><div><div class="n">${esc(t.name)}</div><div class="m">${esc(t.district)}${t.level?' · '+esc(t.level):''}${t.distance_km?' · '+esc(t.distance_km)+' km':''}</div>${days?`<div class="days">${days}</div>`:''}</div></div>`;
     }
   }
-  $('#list').innerHTML=h||'<div class="group">No treks loaded</div>';
+  $('#list').innerHTML=h||`<div class="group">${TREKS.length?'No treks match your search':'No treks loaded'}</div>`;
   document.querySelectorAll('.item').forEach(el=>el.onclick=()=>showDetail(+el.dataset.id,true));
+  document.querySelectorAll('.item .pick').forEach(cb=>cb.onclick=e=>{e.stopPropagation();
+    const id=+cb.closest('.item').dataset.id;cb.checked?picked.add(id):picked.delete(id);render();});
   if(openId)showDetail(openId,false);
 }
 
@@ -197,6 +224,7 @@ function showDetail(id,fly){
   const t=TREKS.find(x=>x.id===id);if(!t)return;openId=id;
   document.querySelectorAll('.item').forEach(el=>el.classList.toggle('sel',+el.dataset.id===id));
   if(fly&&t.lat)map.flyTo([t.lat,t.lon],Math.max(map.getZoom(),11),{duration:.6});
+  if(fly&&matchMedia('(max-width:800px)').matches)$('#mapwrap').scrollIntoView({behavior:'smooth'});
   const ll=t.lat?`${t.lat},${t.lon}`:'';
   const st=trekStatus(t),n=Math.max(1,+$('#tickets').value||1);
   let rows='';
@@ -237,12 +265,13 @@ async function check(){
   if(busy)return;
   if(!selected.size){$('#status').textContent='Pick at least one date first.';return;}
   busy=true;$('#go').disabled=true;
-  const now=Date.now(),dates=[...selected];
-  const t1=TREKS.filter(t=>!blocked[t.id]).map(t=>async()=>{blocked[t.id]=await api(`/api/blocked?district=${t.district_id}&trek=${t.id}`)});
+  const now=Date.now(),dates=[...selected],treks=targets();
+  if(!treks.length){$('#status').textContent='No treks to check - change the search or tick some treks.';busy=false;$('#go').disabled=false;return;}
+  const t1=treks.filter(t=>!blocked[t.id]).map(t=>async()=>{blocked[t.id]=await api(`/api/blocked?district=${t.district_id}&trek=${t.id}`)});
   let done=0;
   await pool(t1,3,()=>setProgress(++done,t1.length,`Reading closed dates… ${done}/${t1.length}`));
   const t2=[];
-  for(const t of TREKS)for(const k of dates){
+  for(const t of treks)for(const k of dates){
     if((blocked[t.id]||[]).includes(k))continue;
     const a=avail[t.id+'|'+k];if(a&&!a.error&&now-a.t<FRESH_MS)continue;
     t2.push(async()=>{try{avail[t.id+'|'+k]={...await api(`/api/availability?district=${t.district_id}&trek=${t.id}&date=${k}`),t:Date.now()}}catch(e){avail[t.id+'|'+k]={error:e.message,t:Date.now()}}render();});
@@ -250,12 +279,15 @@ async function check(){
   done=0;
   await pool(t2,3,()=>setProgress(++done,t2.length,`Checking seats… ${done}/${t2.length}`));
   render();
-  const n=TREKS.filter(t=>trekStatus(t).c==='ok').length,errs=Object.values(avail).filter(a=>a.error).length;
+  const n=treks.filter(t=>trekStatus(t).c==='ok').length,errs=Object.values(avail).filter(a=>a.error).length;
   setProgress(0,0,`${n} trek${n===1?'':'s'} available · checked ${new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}${errs?` · ${errs} checks failed`:''}`);
   busy=false;$('#go').disabled=false;
 }
 $('#go').onclick=check;
 $('#tickets').oninput=render;$('#mode').onchange=render;
+$('#q').oninput=render;
+$('#q').onkeydown=e=>{if(e.key!=='Enter')return;const t=TREKS.filter(matches).sort((a,b)=>a.name.localeCompare(b.name))[0];if(t)showDetail(t.id,true);};
+$('#allTreks').onclick=()=>{picked.clear();$('#q').value='';render();};
 
 async function init(){
   buildDates();
