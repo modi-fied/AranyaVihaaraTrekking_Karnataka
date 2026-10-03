@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Trek Availability Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{--bg:#f6f5f0;--panel:#fff;--ink:#1f2a24;--muted:#66706a;--line:#e3e1d8;--accent:#1c6b3c;
+ --ok:#1e9e57;--part:#e0a100;--none:#d6453d;--idle:#9aa39e}
+*{box-sizing:border-box}html,body{margin:0;height:100%;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+#app{display:grid;grid-template-columns:380px 1fr;height:100vh}
+aside{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.head{padding:16px 18px 10px;border-bottom:1px solid var(--line)}
+h1{font-size:18px;margin:0}.sub{color:var(--muted);font-size:12px}
+.controls{padding:12px 18px;border-bottom:1px solid var(--line)}
+.lbl{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px;display:flex;justify-content:space-between}
+.lbl a{text-transform:none;font-weight:500;color:var(--accent);cursor:pointer}
+.calnav{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.calnav button{border:1px solid var(--line);background:#fff;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:16px;color:var(--ink)}
+.calnav button:disabled{opacity:.35;cursor:default}
+.calnav select{flex:1;padding:5px 6px}
+.chips{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.wd{font-size:10px;color:var(--muted);text-align:center;font-weight:600}
+.chip{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 0;cursor:pointer;font:600 13px system-ui;color:var(--ink)}
+.chip.wk{background:#f3f7f1}.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip.off{background:transparent;border-color:transparent;color:#b5bab6;cursor:not-allowed;font-weight:400}
+.chip.today{outline:2px solid #c9d8cd;outline-offset:-2px}
+.calhint{font-size:11px;color:var(--muted);margin-top:6px}
+.row{display:flex;gap:10px;margin-top:12px;align-items:end}
+.row label{flex:1;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+input,select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+button.go{margin-top:12px;width:100%;padding:10px;border:0;border-radius:10px;background:var(--accent);color:#fff;font:600 14px system-ui;cursor:pointer}
+button.go:disabled{opacity:.6;cursor:wait}
+#status{font-size:12px;color:var(--muted);margin-top:8px;min-height:18px}
+.bar{height:4px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:4px;display:none}.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+#list{overflow:auto;flex:1;padding:6px 10px 14px}
+.item{display:flex;gap:10px;padding:9px 8px;border-radius:10px;cursor:pointer;align-items:flex-start}
+.item:hover,.item.sel{background:#f1f4ef}
+.dot{width:12px;height:12px;border-radius:50%;margin-top:4px;flex:none;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.item .n{font-weight:600}.item .m{font-size:12px;color:var(--muted)}
+.days{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap}
+.days em{font-style:normal;font-size:11px;padding:1px 6px;border-radius:6px;background:#eee;color:#333}
+.days .ok{background:#dff3e6;color:#11643a}.days .few{background:#fdf0cc;color:#7a5a00}.days .full,.days .closed{background:#fbe1df;color:#8f2621}.days .closed{background:#eceeed;color:#666}
+.group{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:12px 8px 4px}
+#mapwrap{position:relative;min-height:0}
+#map{position:absolute;inset:0}
+.legend{position:absolute;right:12px;bottom:22px;z-index:500;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.legend div{display:flex;align-items:center;gap:6px}.legend .dot{margin:0;width:10px;height:10px}
+#detail{position:absolute;top:12px;right:12px;width:380px;max-height:calc(100% - 24px);overflow:auto;z-index:600;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.14);display:none}
+#detail .top{padding:14px 16px 8px;position:relative}
+#detail h2{font-size:17px;margin:0 28px 2px 0}#detail .kn{color:var(--muted);font-size:13px}
+#detail .x{position:absolute;right:10px;top:8px;border:0;background:none;font-size:22px;cursor:pointer;color:var(--muted)}
+#detail .facts{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;padding:4px 16px 10px;font-size:13px}
+#detail .facts b{display:block;font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase}
+#detail iframe{width:100%;height:210px;border:0;display:block;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.btns{display:flex;gap:8px;padding:10px 16px}
+.btns a{flex:1;text-align:center;padding:8px;border-radius:9px;text-decoration:none;font-weight:600;font-size:13px;border:1px solid var(--line);color:var(--ink)}
+.btns a.pri{background:#1a73e8;border-color:#1a73e8;color:#fff}
+table{width:calc(100% - 32px);margin:4px 16px 14px;border-collapse:collapse;font-size:13px}
+td,th{padding:5px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{font-size:11px;color:var(--muted);text-transform:uppercase}
+.note{font-size:12px;color:var(--muted);padding:0 16px 14px}
+@media (max-width:800px){#app{grid-template-columns:1fr;grid-template-rows:auto 55vh}aside{max-height:none}#list{max-height:40vh}#detail{left:8px;right:8px;width:auto}}
+</style></head>
+<body><div id="app">
+<aside>
+ <div class="head"><h1>Trek availability</h1><div class="sub">Unofficial helper · live seat counts from the <a href="https://aranyavihaara.karnataka.gov.in/" target="_blank">Aranya Vihaara</a> booking site · not affiliated with the Forest Department</div></div>
+ <div class="controls">
+  <div class="lbl">Dates <a id="clear">clear</a></div>
+  <div class="calnav"><button id="prev" title="Previous month">&#8249;</button><select id="month"></select><select id="year"></select><button id="next" title="Next month">&#8250;</button></div>
+  <div id="dates" class="chips"></div>
+  <div class="calhint" id="calhint"></div>
+  <div class="row">
+   <label>Tickets needed<input id="tickets" type="number" min="1" max="50" value="2"></label>
+   <label>Show treks open on<select id="mode"><option value="all">all selected dates</option><option value="any">any selected date</option></select></label>
+  </div>
+  <button class="go" id="go">Check availability</button>
+  <div id="status">Pick one or more dates, then check.</div><div class="bar" id="bar"><i></i></div>
+ </div>
+ <div id="list"></div>
+</aside>
+<div id="mapwrap"><div id="map"></div>
+ <div class="legend">
+  <div><span class="dot" style="background:var(--ok)"></span>Enough tickets</div>
+  <div><span class="dot" style="background:var(--part)"></span>Some dates / fewer seats</div>
+  <div><span class="dot" style="background:var(--none)"></span>Sold out or closed</div>
+  <div><span class="dot" style="background:var(--idle)"></span>Not checked yet</div>
+ </div>
+ <div id="detail"></div>
+</div></div>
+<script>
+// Live seat checks: on the local app (trek_map.py) they go to the same server;
+// on GitHub Pages they go to the Cloudflare Worker in worker/worker.js.
+const WORKER_URL='https://aranyavihaaratrekking-karnataka.atharvamodi.workers.dev';
+const LOCAL=['127.0.0.1','localhost'].includes(location.hostname);
+const API=LOCAL?'':WORKER_URL;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const key=d=>pad(d.getDate())+'-'+pad(d.getMonth()+1)+'-'+d.getFullYear();
+const sortKey=k=>k.split('-').reverse().join('');
+const pretty=k=>{const [d,m,y]=k.split('-');return new Date(+y,m-1,+d).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'})};
+const COLORS={ok:'#1e9e57',part:'#e0a100',none:'#d6453d',idle:'#9aa39e'};
+const FRESH_MS=5*60*1000;
+let TREKS=[],markers={},blocked={},avail={},selected=new Set(),openId=null,busy=false;
+
+const map=L.map('map',{zoomControl:true}).setView([14.6,76.3],7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+let view=null;
+function windowDates(){const now=new Date(),lead=now.getHours()<12?1:2;
+  return{now,min:new Date(now.getFullYear(),now.getMonth(),now.getDate()+lead),max:new Date(now.getFullYear(),now.getMonth(),now.getDate()+30)};}
+function buildDates(){
+  const w=windowDates();
+  if(!view)view={y:w.min.getFullYear(),m:w.min.getMonth()};
+  const ms=$('#month'),ys=$('#year');
+  if(!ms.options.length){MONTHS.forEach((n,i)=>ms.add(new Option(n,i)));
+    for(let y=w.now.getFullYear()-1;y<=w.now.getFullYear()+2;y++)ys.add(new Option(y,y));
+    ms.onchange=()=>{view.m=+ms.value;buildDates()};ys.onchange=()=>{view.y=+ys.value;buildDates()};
+    $('#prev').onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--}buildDates()};
+    $('#next').onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++}buildDates()};}
+  ms.value=view.m;ys.value=view.y;
+  $('#prev').disabled=view.y==w.now.getFullYear()-1&&view.m==0;
+  $('#next').disabled=view.y==w.now.getFullYear()+2&&view.m==11;
+  const box=$('#dates');box.innerHTML='';
+  'Sun Mon Tue Wed Thu Fri Sat'.split(' ').forEach(d=>{const e=document.createElement('div');e.className='wd';e.textContent=d;box.appendChild(e)});
+  const first=new Date(view.y,view.m,1),days=new Date(view.y,view.m+1,0).getDate();
+  for(let i=0;i<first.getDay();i++)box.appendChild(document.createElement('div'));
+  const todayK=key(w.now);
+  for(let dn=1;dn<=days;dn++){
+    const d=new Date(view.y,view.m,dn),k=key(d),b=document.createElement('button');
+    const ok=d>=w.min&&d<=w.max;
+    b.className='chip'+(d.getDay()===0||d.getDay()===6?' wk':'')+(ok?'':' off')+(selected.has(k)?' on':'')+(k===todayK?' today':'');
+    b.textContent=dn;b.dataset.k=k;
+    if(ok){b.title=pretty(k);b.onclick=()=>{selected.has(k)?selected.delete(k):selected.add(k);b.classList.toggle('on');buildDates();render();};}
+    else{b.disabled=true;
+      if(d<w.min)b.title=k===todayK?'Today - booking must be made at least 1 day ahead':'Past date';
+      else{const opens=new Date(d.getFullYear(),d.getMonth(),d.getDate()-30);b.title='Opens for booking on '+opens.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});}}
+    box.appendChild(b);
+  }
+  const f=o=>o.toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+  const sel=[...selected].sort((a,b)=>sortKey(a)<sortKey(b)?-1:1);
+  $('#calhint').innerHTML=`Bookable now: ${f(w.min)} – ${f(w.max)} (the site opens dates 30 days ahead; hover a grey date to see when it opens).`+
+    (sel.length?`<br>Selected: ${sel.map(k=>esc(pretty(k))).join(', ')}`:'');
+}
+$('#clear').onclick=()=>{selected.clear();buildDates();render();};
+
+function dayStatus(t,k,n){
+  if((blocked[t.id]||[]).includes(k))return{s:'closed'};
+  const a=avail[t.id+'|'+k];
+  if(!a)return{s:'pending'};
+  if(a.error)return{s:'error',msg:a.error};
+  if(!a.slots.length)return{s:'closed'};
+  const best=Math.max(...a.slots.map(x=>x.left));
+  return best>=n?{s:'ok',best}:best>0?{s:'few',best}:{s:'full',best:0};
+}
+function trekStatus(t){
+  const n=Math.max(1,+$('#tickets').value||1),mode=$('#mode').value;
+  const days=[...selected].sort((a,b)=>sortKey(a)<sortKey(b)?-1:1).map(k=>({k,...dayStatus(t,k,n)}));
+  if(!days.length||days.every(d=>d.s==='pending'))return{c:'idle',days};
+  const ok=days.filter(d=>d.s==='ok').length,few=days.some(d=>d.s==='few'),pend=days.some(d=>d.s==='pending');
+  let c;
+  if(mode==='all')c=ok===days.length?'ok':(ok>0||few)?'part':'none';
+  else c=ok>0?'ok':few?'part':'none';
+  if(pend&&c!=='ok')c='idle';
+  return{c,days,ok};
+}
+const dayLabel=d=>({ok:`${d.best} left`,few:`only ${d.best}`,full:'sold out',closed:'closed',pending:'…',error:'error'})[d.s];
+
+function render(){
+  const groups={ok:[],part:[],none:[],idle:[]};
+  for(const t of TREKS){
+    const st=trekStatus(t);groups[st.c].push([t,st]);
+    const m=markers[t.id];if(m){m.setStyle({fillColor:COLORS[st.c],radius:st.c==='ok'?11:8,fillOpacity:st.c==='idle'?.6:.95});if(st.c==='ok')m.bringToFront();}
+  }
+  const titles={ok:'Available',part:'Partly available',none:'Not available',idle:selected.size?'Not checked yet':'Open treks'};
+  let h='';
+  for(const g of ['ok','part','none','idle']){
+    if(!groups[g].length)continue;
+    h+=`<div class="group">${titles[g]} · ${groups[g].length}</div>`;
+    for(const [t,st] of groups[g].sort((a,b)=>a[0].name.localeCompare(b[0].name))){
+      const days=st.days.filter(d=>d.s!=='pending').map(d=>`<em class="${d.s}" title="${esc(pretty(d.k))}">${esc(pretty(d.k).split(',')[0]+' '+d.k.slice(0,2))}: ${esc(dayLabel(d))}</em>`).join('');
+      h+=`<div class="item${openId===t.id?' sel':''}" data-id="${t.id}"><span class="dot" style="background:${COLORS[st.c]}"></span><div><div class="n">${esc(t.name)}</div><div class="m">${esc(t.district)}${t.level?' · '+esc(t.level):''}${t.distance_km?' · '+esc(t.distance_km)+' km':''}</div>${days?`<div class="days">${days}</div>`:''}</div></div>`;
+    }
+  }
+  $('#list').innerHTML=h||'<div class="group">No treks loaded</div>';
+  document.querySelectorAll('.item').forEach(el=>el.onclick=()=>showDetail(+el.dataset.id,true));
+  if(openId)showDetail(openId,false);
+}
+
+function showDetail(id,fly){
+  const t=TREKS.find(x=>x.id===id);if(!t)return;openId=id;
+  document.querySelectorAll('.item').forEach(el=>el.classList.toggle('sel',+el.dataset.id===id));
+  if(fly&&t.lat)map.flyTo([t.lat,t.lon],Math.max(map.getZoom(),11),{duration:.6});
+  const ll=t.lat?`${t.lat},${t.lon}`:'';
+  const st=trekStatus(t),n=Math.max(1,+$('#tickets').value||1);
+  let rows='';
+  for(const d of st.days){
+    const a=avail[t.id+'|'+d.k];
+    let cell;
+    if(d.s==='closed')cell='Closed / blocked';
+    else if(d.s==='pending')cell='Not checked yet';
+    else if(d.s==='error')cell='Could not check: '+esc(d.msg);
+    else cell=a.slots.map(s=>`${esc(s.time||'Slot')}: <b>${s.left}</b> / ${s.capacity} left`).join('<br>');
+    rows+=`<tr><td>${esc(pretty(d.k))}</td><td>${cell}</td></tr>`;
+  }
+  const mpb=Object.keys(avail).filter(k=>k.startsWith(t.id+'|')).map(k=>avail[k].max_per_booking).find(x=>x);
+  $('#detail').innerHTML=`<div class="top"><button class="x" title="Close">×</button><h2>${esc(t.name)}</h2><div class="kn">${esc(t.name_kn)} · ${esc(t.district)}</div></div>
+   <div class="facts"><div><b>Start point</b>${esc(t.start_point||'—')}</div><div><b>End point</b>${esc(t.end_point||'—')}</div>
+   <div><b>Distance</b>${t.distance_km?esc(t.distance_km)+' km':'—'}</div><div><b>Duration</b>${t.duration?esc(t.duration)+' h':'—'}</div>
+   ${t.level?`<div><b>Difficulty</b>${esc(t.level)}</div>`:''}${mpb?`<div><b>Max per booking</b>${mpb} visitors</div>`:''}
+   ${t.guide?`<div><b>Guide</b>${esc(t.guide)} ${esc(t.guide_phone)}</div>`:''}</div>
+   ${ll?`<iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="https://maps.google.com/maps?q=${ll}&z=13&output=embed"></iframe>
+   <div class="btns"><a class="pri" target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=${ll}">Directions in Google Maps</a><a target="_blank" href="https://www.google.com/maps/search/?api=1&query=${ll}">Open in Google Maps</a></div>`:''}
+   ${rows?`<table><tr><th>Date</th><th>Slots (seats left)</th></tr>${rows}</table>`:'<div class="note">Select dates and press Check to see seats.</div>'}
+   ${mpb&&n>mpb?`<div class="note">You need ${n} tickets but this trek allows ${mpb} per booking, so you'd need more than one booking.</div>`:''}
+   <div class="note">To book, go to <a target="_blank" href="https://aranyavihaara.karnataka.gov.in/">aranyavihaara.karnataka.gov.in</a> and pick ${esc(t.district_kn||t.district)} → ${esc(t.name_kn||t.name)}.</div>`;
+  $('#detail').style.display='block';
+  $('#detail .x').onclick=()=>{$('#detail').style.display='none';openId=null;render();};
+}
+
+async function api(path){if(!LOCAL&&WORKER_URL.includes('YOUR-WORKER'))throw new Error('live checks are not set up yet (WORKER_URL in index.html)');const r=await fetch(API+path);const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j;}
+
+async function pool(tasks,n,tick){let i=0;const w=async()=>{while(i<tasks.length){const t=tasks[i++];try{await t()}catch(e){console.warn(e)}tick()}};await Promise.all(Array.from({length:n},w));}
+
+function setProgress(done,total,msg){
+  $('#bar').style.display=total?'block':'none';$('#bar i').style.width=total?(100*done/total)+'%':'0';
+  $('#status').textContent=msg;
+}
+
+async function check(){
+  if(busy)return;
+  if(!selected.size){$('#status').textContent='Pick at least one date first.';return;}
+  busy=true;$('#go').disabled=true;
+  const now=Date.now(),dates=[...selected];
+  const t1=TREKS.filter(t=>!blocked[t.id]).map(t=>async()=>{blocked[t.id]=await api(`/api/blocked?district=${t.district_id}&trek=${t.id}`)});
+  let done=0;
+  await pool(t1,3,()=>setProgress(++done,t1.length,`Reading closed dates… ${done}/${t1.length}`));
+  const t2=[];
+  for(const t of TREKS)for(const k of dates){
+    if((blocked[t.id]||[]).includes(k))continue;
+    const a=avail[t.id+'|'+k];if(a&&!a.error&&now-a.t<FRESH_MS)continue;
+    t2.push(async()=>{try{avail[t.id+'|'+k]={...await api(`/api/availability?district=${t.district_id}&trek=${t.id}&date=${k}`),t:Date.now()}}catch(e){avail[t.id+'|'+k]={error:e.message,t:Date.now()}}render();});
+  }
+  done=0;
+  await pool(t2,3,()=>setProgress(++done,t2.length,`Checking seats… ${done}/${t2.length}`));
+  render();
+  const n=TREKS.filter(t=>trekStatus(t).c==='ok').length,errs=Object.values(avail).filter(a=>a.error).length;
+  setProgress(0,0,`${n} trek${n===1?'':'s'} available · checked ${new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}${errs?` · ${errs} checks failed`:''}`);
+  busy=false;$('#go').disabled=false;
+}
+$('#go').onclick=check;
+$('#tickets').oninput=render;$('#mode').onchange=render;
+
+async function init(){
+  buildDates();
+  $('#status').textContent='Loading trek list…';
+  try{const r=await fetch('treks.json',{cache:'no-cache'});if(!r.ok)throw new Error(r.status);TREKS=await r.json();}catch(e){$('#status').textContent='Could not load treks: '+e.message;return;}
+  const seen={},pts=[];
+  for(const t of TREKS){
+    if(t.lat==null)continue;
+    const s=t.lat.toFixed(3)+','+t.lon.toFixed(3);const off=(seen[s]=(seen[s]||0)+1)-1;
+    const m=L.circleMarker([t.lat,t.lon+off*0.006],{radius:8,color:'#fff',weight:2,fillColor:COLORS.idle,fillOpacity:.6}).addTo(map);
+    m.bindTooltip(t.name,{direction:'top',offset:[0,-8]});m.on('click',()=>showDetail(t.id,false));
+    markers[t.id]=m;pts.push([t.lat,t.lon]);
+  }
+  if(pts.length)map.fitBounds(pts,{padding:[40,40]});
+  $('#status').textContent=`${TREKS.length} open treks. Pick dates, then check.`;
+  render();
+}
+init();
+</script></body></html>
