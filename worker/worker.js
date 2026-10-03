@@ -40,7 +40,11 @@ async function newSession() {
   const m = page.match(/name="_token"[^>]*value="([^"]+)"/) ||
             page.match(/value="([^"]+)"[^>]*name="_token"/) ||
             page.match(/_token['"]?\s*:\s*['"]([^'"]+)['"]/);
-  if (!m) throw new Error("Could not find the security token on the home page (the website may have changed).");
+  if (!m) {
+    const title = (page.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || page.slice(0, 120);
+    throw new Error(`Could not find the security token on the home page (site replied ${resp.status}: ` +
+                    `${cleanText(title).slice(0, 120)}).`);
+  }
   return { token: m[1], cookie: cookieHeader(resp) };
 }
 
